@@ -1,0 +1,105 @@
+image: openjdk:11.0.3-jdk
+
+variables:
+    # For simplicities sake we increase the minor version for releases, and the patch version for hotfixes
+    RELEASE_DIGIT: 1
+    HOTFIX_DIGIT: 2
+
+.git_template: &git_setup |
+    git remote set-url --push origin "https://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    git config user.name "Gitlab"
+    git config user.email gitlab@viesure.io
+
+
+stages:
+    - build
+    - release
+    - deploy
+
+
+mvn-build:
+    stage: build
+    tags: [java11]
+    script:
+        - ./mvnw clean verify
+    only:
+        - branches
+
+deploy:
+    stage: deploy
+    tags: [java11]
+    dependencies:
+        - mvn-build
+    script:
+        - echo "Insert actual deployment here"
+    only:
+        - development
+        - master
+
+release:
+    stage: release
+    tags: [docker]
+    dependencies:
+        - mvn-build
+    script:
+        - *git_setup
+        - ./mvnw gitflow:release -B -DgitflowDigitToIncrement=$RELEASE_DIGIT
+    only:
+        - development
+    when: manual
+
+release-start:
+    stage: release
+    tags: [docker]
+    dependencies:
+        - mvn-build
+    script:
+        - *git_setup
+        - ./mvnw gitflow:release-start -B -DgitflowDigitToIncrement=$RELEASE_DIGIT
+        - git push origin HEAD
+    only:
+        - development
+    when: manual
+
+release-finish:
+    stage: release
+    tags: [docker]
+    dependencies:
+        - mvn-build
+    script:
+        - *git_setup
+        # Manually fix the git refs. gitflow plugin uses the heads ref, but we do not have it set up locally, however we have the remote ref
+        - git symbolic-ref refs/heads/$CI_COMMIT_REF_NAME refs/remotes/origin/$CI_COMMIT_REF_NAME
+        - ./mvnw gitflow:release-finish -B -DgitflowDigitToIncrement=$RELEASE_DIGIT
+    only:
+        - /^release\/.*$/
+    when: manual
+
+hotfix-start:
+    stage: release
+    tags: [docker]
+    dependencies:
+        - mvn-build
+    script:
+        - *git_setup
+        - ./mvnw gitflow:hotfix-start -B -DgitflowDigitToIncrement=$HOTFIX_DIGIT
+        - git push origin HEAD
+    only:
+        - master
+    when: manual
+
+hotfix-finish:
+    stage: release
+    tags: [docker]
+    dependencies:
+        - mvn-build
+    script:
+        - *git_setup
+        # Wo need to pass in the version. We parse it from the branch name
+        - export CURRENT_VERSION=${CI_COMMIT_REF_NAME/hotfix\/}
+        # Manually fix the git refs. gitflow plugin uses the heads ref, but we do not have it set up locally, however we have the remote ref
+        - git symbolic-ref refs/heads/$CI_COMMIT_REF_NAME refs/remotes/origin/$CI_COMMIT_REF_NAME
+        - ./mvnw gitflow:hotfix-finish -B -DgitflowDigitToIncrement=$HOTFIX_DIGIT -DhotfixVersion=$CURRENT_VERSION
+    only:
+        - /^hotfix\/.*$/
+    when: manual
