@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.viesure</groupId>
+    <artifactId>gitlab-flow-example</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.amashchenko.maven.plugin</groupId>
+                <artifactId>gitflow-maven-plugin</artifactId>
+                <version>1.13.0</version>
+                <configuration>
+                    <!-- we use maven wrapper instead of maven installation -->
+                    <mvnExecutable>./mvnw</mvnExecutable>
+
+                    <!-- don't push to remote, since we want to try things out locally -->
+                    <pushRemote>false</pushRemote>
+
+                    <!-- we use major.minor.patch versioning, being 0.1.2 respectively.
+                         By default the minor version is increased.
+                         Hotfixes increase the patch version. -->
+                    <versionDigitToIncrement>${gitflowDigitToIncrement}</versionDigitToIncrement>
+
+                    <gitFlowConfig>
+                        <productionBranch>master</productionBranch>
+                        <!-- default is develop, but we use development -->
+                        <developmentBranch>development</developmentBranch>
+                    </gitFlowConfig>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
